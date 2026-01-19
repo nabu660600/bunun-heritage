@@ -1,1 +1,241 @@
-# bunun-heritage
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>布農之蹤 | Bunun Heritage Interactive Map</title>
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
+
+    <style>
+        :root {
+            --bunun-red: #A52A2A;
+            --bunun-dark: #121212;
+            --bunun-gold: #C5A059;
+            --text-gray: #CCCCCC;
+        }
+
+        body {
+            background-color: var(--bunun-dark);
+            color: white;
+            font-family: 'Noto Serif TC', serif;
+            overflow-x: hidden;
+        }
+
+        /* 導覽列 */
+        .navbar {
+            background-color: rgba(0, 0, 0, 0.9) !important;
+            border-bottom: 2px solid var(--bunun-red);
+        }
+
+        /* 地圖容器 */
+        #map {
+            height: 85vh;
+            width: 100%;
+            border: 1px solid #444;
+            border-radius: 8px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+        }
+
+        /* 右側故事列表 */
+        .story-sidebar {
+            height: 85vh;
+            overflow-y: auto;
+            padding-right: 10px;
+        }
+
+        .event-card {
+            background: #1e1e1e;
+            border-radius: 12px;
+            border-left: 6px solid var(--bunun-red);
+            margin-bottom: 20px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            overflow: hidden;
+        }
+
+        .event-card:hover {
+            transform: translateY(-5px);
+            background: #282828;
+            border-left: 6px solid var(--bunun-gold);
+        }
+
+        .event-card img {
+            width: 100%;
+            height: 180px;
+            object-fit: cover;
+            filter: sepia(20%) contrast(110%);
+        }
+
+        .event-content {
+            padding: 15px;
+        }
+
+        .event-title {
+            color: var(--bunun-gold);
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+
+        .event-meta {
+            font-size: 0.85rem;
+            color: var(--bunun-red);
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+
+        /* 自訂彈窗樣式 */
+        .leaflet-popup-content-wrapper {
+            background: #222;
+            color: white;
+            border: 1px solid var(--bunun-red);
+        }
+        
+        .leaflet-popup-tip { background: var(--bunun-red); }
+
+        /* 滾動條 */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #111; }
+        ::-webkit-scrollbar-thumb { background: var(--bunun-red); border-radius: 10px; }
+
+        .hero-title {
+            text-align: center;
+            padding: 40px 0;
+            background: linear-gradient(to bottom, #331111, #121212);
+        }
+    </style>
+</head>
+<body>
+
+<div class="hero-title animate__animated animate__fadeIn">
+    <h1 class="display-4 fw-bold">布農足跡：從高山到深林的戰鬥與遷徙</h1>
+    <p class="lead" style="color: var(--bunun-gold)">探索布農族橫跨中央山脈的壯烈史詩</p>
+</div>
+
+<div class="container-fluid px-4">
+    <div class="row">
+        <div class="col-lg-8 mb-4">
+            <div id="map" class="animate__animated animate__zoomIn"></div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="story-sidebar" id="story-list">
+                </div>
+        </div>
+    </div>
+</div>
+
+<footer class="text-center py-5 mt-4 text-secondary border-top border-dark">
+    <p>© 2026 布農文化互動歷史專案 | 守護山林的脊樑</p>
+</footer>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+    // 1. 初始化地圖
+    const map = L.map('map').setView([23.7, 121.0], 8);
+    
+    // 使用 Dark Mode 底圖
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; OpenStreetMap'
+    }).addTo(map);
+
+    // 2. 擴充事件資料 (已替換為您提供的專屬圖片連結)
+    const events = [
+        {
+            id: 1,
+            title: "神話起點：玉山洪水避難",
+            location: [23.47, 120.95],
+            date: "遠古時期",
+            img: "https://insight.ipcf.org.tw/s/Item/Content/4cadbebece3d4e80968bbf7d0e0093fe.jpg",
+            desc: "布農族傳說中，遠古洪水淹沒大地，族人逃往玉山(Mt. Jade)避難。當時靠著紅嘴黑鵯取火、大蛇與大山交戰。這段神話確立了布農族作為『山岳之子』的靈魂，也使玉山成為聖地。"
+        },
+        {
+            id: 2,
+            title: "越過脊樑：大規模南遷與東移",
+            location: [23.3, 121.0],
+            date: "18世紀末",
+            img: "https://www.ysnp.gov.tw/FileDownload/ContentManagement/20210809161046271205070.jpg",
+            desc: "因人口激增與漢人向南投山區開墾的壓力，布農族展現了強大的遷徙能力。郡社群與巒社群翻越中央山脈脊樑，進入今日的花蓮卓溪、台東海端，與當地的泰雅族、賽德克族發生地緣競爭。"
+        },
+        {
+            id: 3,
+            title: "獵場之戰：與鄒族的邊界衝突",
+            location: [23.5, 120.8],
+            date: "19世紀中葉",
+            img: "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8c/A_Man_Surnamed_Mao_from_the_Thao_Tribe_by_the_Sun_Moon_Lake.jpg/250px-A_Man_Surnamed_Mao_from_the_Thao_Tribe_by_the_Sun_Moon_Lake.jpg",
+            desc: "在遷徙過程中，布農族向西擴張至玉山西側，與原居於此的鄒族(Tsou)發生激烈的獵場爭奪戰。布農族剽悍的游擊戰術使鄒族勢力退回阿里山山區，改變了台灣中南部山區的族群分布圖。"
+        },
+        {
+            id: 4,
+            title: "大分事件：十八年抗戰",
+            location: [23.44, 121.15],
+            date: "1915 - 1933",
+            img: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR3ZyevzRd-2jgPTrKAmSM1_ZwUyX4NYfVdQA&s",
+            desc: "這是日治時期最震撼的武裝抗爭。拉馬達·仙仙發動大分事件，襲擊日警駐在所。布農族利用拉庫拉庫溪的險峻地形，讓日軍束手無策，直到日本修建『八通關越嶺道路』並出動大砲才被迫停戰。"
+        },
+        {
+            id: 5,
+            title: "霧社事件後：被利用的族群衝突",
+            location: [24.02, 121.13],
+            date: "1930 - 1931",
+            img: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEg3nv47ykSLTfpWBy_pWOYTKHpcf9KWUcBqH8nw9CRkUc9w7xQzMT6qjs37vwxs5kteQs4Q3x-udI5DeiT-dzKyFgl4AX0bSvCwG5g6XKsWA2WKdNRknFs2A9FhC6mrn1tU8G1RTw/s1600/lona.jpg",
+            desc: "霧社事件後，日方採取『以夷制夷』策略，誘導布農族攻擊殘餘的賽德克族。因長期以來的獵場積怨，雙方在『第二霧社事件』中發生慘烈衝突。這是歷史的悲劇，展現了殖民者如何利用原民矛盾。"
+        },
+        {
+            id: 4, // 修正原始碼 id 重複問題
+            id: 6,
+            title: "內本鹿事件：最後的抗爭",
+            location: [22.95, 121.01],
+            date: "1941年",
+            img: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTSXZsdzkxGYJZVVd8glq3RClCih4YvY36feQ&s",
+            desc: "日治末期，日軍強迫台東內本鹿地區的布農族人遷往平地，族人不願離開祖靈之地，展開長年的隱居躲藏與游擊反抗。這反映了布農族對土地神聖不可侵犯的執著。"
+        }
+    ];
+
+    const storyList = document.getElementById('story-list');
+
+    // 3. 生成卡片與地標
+    events.forEach((ev, index) => {
+        // A. 建立地圖地標
+        const marker = L.marker(ev.location).addTo(map);
+        marker.bindPopup(`
+            <div style="width:200px">
+                <img src="${ev.img}" style="width:100%; border-radius:5px; height:120px; object-fit:cover;">
+                <h6 class="mt-2 text-warning">${ev.title}</h6>
+                <p style="font-size:0.8rem; color:#ddd">${ev.date}</p>
+            </div>
+        `);
+
+        // B. 建立右側卡片
+        const card = document.createElement('div');
+        card.className = 'event-card animate__animated animate__fadeInRight';
+        card.style.animationDelay = `${index * 0.1}s`;
+        card.innerHTML = `
+            <img src="${ev.img}" alt="${ev.title}">
+            <div class="event-content">
+                <div class="event-meta">${ev.date}</div>
+                <h5 class="event-title">${ev.title}</h5>
+                <p class="small text-secondary">${ev.desc}</p>
+            </div>
+        `;
+
+        // C. 點擊卡片地圖聯動
+        card.onclick = () => {
+            map.flyTo(ev.location, 11, { duration: 2 });
+            setTimeout(() => marker.openPopup(), 2000);
+            
+            // 視覺反饋
+            document.querySelectorAll('.event-card').forEach(c => c.style.borderColor = '#A52A2A');
+            card.style.borderColor = '#C5A059';
+        };
+
+        storyList.appendChild(card);
+    });
+
+</script>
+
+</body>
+</html>
